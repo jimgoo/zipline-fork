@@ -126,9 +126,14 @@ class RiskMetricsPeriod(object):
             self.sharpe = 0.0
         self.sortino = self.calculate_sortino()
         self.information = self.calculate_information()
-        self.beta, self.algorithm_covariance, self.benchmark_variance, \
+        try:
+            self.beta, self.algorithm_covariance, self.benchmark_variance, \
             self.condition_number, self.eigen_values = self.calculate_beta()
-        self.alpha = self.calculate_alpha()
+            self.alpha = self.calculate_alpha()
+        except:
+            self.beta, self.algorithm_covariance, self.benchmark_variance, \
+                self.condition_number, self.eigen_values = np.nan, np.nan, np.nan, np.nan, np.nan
+            self.alpha = np.nan
         self.excess_return = self.algorithm_period_returns - \
             self.treasury_period_return
         self.max_drawdown = self.calculate_max_drawdown()

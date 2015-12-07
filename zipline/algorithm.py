@@ -491,7 +491,7 @@ class TradingAlgorithm(object):
     # the run method to the subclass, and refactor to put the
     # generator creation logic into get_generator.
     def run(self, source, overwrite_sim_params=True,
-            benchmark_return_source=None):
+            benchmark_return_source=None, is_slave=False):
         """Run the algorithm.
 
         :Arguments:
@@ -585,6 +585,11 @@ class TradingAlgorithm(object):
 
         # loop through simulated_trading, each iteration returns a
         # perf dictionary
+        # <JDG>
+        self.is_slave = is_slave
+        if is_slave:
+            return None
+            
         perfs = []
         for perf in self.gen:
             perfs.append(perf)
