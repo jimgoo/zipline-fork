@@ -172,3 +172,4 @@ class DataPanelSource(DataSource):
         if not self._raw_data:
             self._raw_data = self.raw_data_gen()
         return self._raw_data
+

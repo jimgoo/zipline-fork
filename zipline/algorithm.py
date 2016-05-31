@@ -240,8 +240,11 @@ class TradingAlgorithm(object):
         self._pipeline_cache = CachedObject(None, pd.Timestamp(0, tz='UTC'))
 
         self.blotter = kwargs.pop('blotter', None)
+        self.take_market = kwargs.pop('take_market', False)
+        print '-'*60
+        print 'algorithm.py: take market = %s, be sure to set slippage parameter accordingly' % self.take_market
         if not self.blotter:
-            self.blotter = Blotter()
+            self.blotter = Blotter(take_market=self.take_market)
 
         # Set the dt initally to the period start by forcing it to change
         self.on_dt_changed(self.sim_params.period_start)
@@ -291,8 +294,7 @@ class TradingAlgorithm(object):
 
         elif kwargs.get('initialize') and kwargs.get('handle_data'):
             if self.algoscript is not None:
-                raise ValueError('You can not set script and \
-                initialize/handle_data.')
+                raise ValueError('You can not set script and initialize/handle_data.')
             self._initialize = kwargs.pop('initialize')
             self._handle_data = kwargs.pop('handle_data')
             self._before_trading_start = kwargs.pop('before_trading_start',

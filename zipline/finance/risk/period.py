@@ -131,6 +131,7 @@ class RiskMetricsPeriod(object):
             self.condition_number, self.eigen_values = self.calculate_beta()
             self.alpha = self.calculate_alpha()
         except:
+            # <JDG>
             self.beta, self.algorithm_covariance, self.benchmark_variance, \
                 self.condition_number, self.eigen_values = np.nan, np.nan, np.nan, np.nan, np.nan
             self.alpha = np.nan

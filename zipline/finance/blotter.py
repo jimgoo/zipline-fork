@@ -50,7 +50,7 @@ ORDER_STATUS = Enum(
 
 class Blotter(object):
 
-    def __init__(self):
+    def __init__(self, take_market=False):
         self.transact = transact_partial(VolumeShareSlippage(), PerShare())
         # these orders are aggregated by sid
         self.open_orders = defaultdict(list)
@@ -61,6 +61,7 @@ class Blotter(object):
         self.new_orders = []
         self.current_dt = None
         self.max_shares = int(1e+11)
+        self.take_market = take_market
 
     def __repr__(self):
         return """
@@ -111,7 +112,8 @@ class Blotter(object):
             amount=amount,
             stop=style.get_stop_price(is_buy),
             limit=style.get_limit_price(is_buy),
-            id=order_id
+            id=order_id,
+            take_market=self.take_market
         )
 
         self.open_orders[order.sid].append(order)
@@ -287,7 +289,7 @@ class Blotter(object):
 
 class Order(object):
     def __init__(self, dt, sid, amount, stop=None, limit=None, filled=0,
-                 commission=None, id=None):
+                 commission=None, id=None, take_market=False):
         """
         @dt - datetime.datetime that the order was placed
         @sid - stock sid of the order
@@ -312,6 +314,7 @@ class Order(object):
         self.limit_reached = False
         self.direction = math.copysign(1, self.amount)
         self.type = zp.DATASOURCE_TYPE.ORDER
+        self.take_market = take_market
 
     def make_id(self):
         return uuid.uuid4().hex
@@ -334,7 +337,9 @@ class Order(object):
         trade event's price.
         """
         stop_reached, limit_reached, sl_stop_reached = \
-            check_order_triggers(self, event)
+            check_order_triggers(self, event, 
+                                 take_market=self.take_market)
+
         if (stop_reached, limit_reached) \
                 != (self.stop_reached, self.limit_reached):
             self.dt = event.dt

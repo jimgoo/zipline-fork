@@ -184,7 +184,7 @@ class SpecificEquityTrades(object):
     def get_hash(self):
         return self.__class__.__name__ + "-" + self.arg_string
 
-    def update_source_id(self, gen):
+    def uate_source_id(self, gen):
         for event in gen:
             event.source_id = self.get_hash()
             yield event

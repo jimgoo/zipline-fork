@@ -34,7 +34,22 @@ STOP = 1 << 2
 LIMIT = 1 << 3
 
 
-def check_order_triggers(order, event):
+def get_market_price(order, event):
+    
+    #print 'Fetching bid/ask prices'
+    assert hasattr(event, 'ask'), 'Event has no `ask` attribute.'
+    assert hasattr(event, 'bid'), 'Event has no `bid` attribute.'
+    if order.amount > 0:
+        # buy at ask
+        #print '\tUsing ask price, qty = %i' % order.amount
+        event_price = event.ask
+    elif order.amount < 0:
+        # sell at bid
+        #print '\tUsing bid price, qty = %i' % order.amount
+        event_price = event.bid
+    return event_price
+
+def check_order_triggers(order, event, take_market=False):
     """
     Given an order and a trade event, return a tuple of
     (stop_reached, limit_reached).
@@ -56,6 +71,11 @@ def check_order_triggers(order, event):
 
     order_type = 0
 
+    if take_market:
+        event_price = get_market_price(order, event)
+    else:
+        event_price = event.price
+
     if order.amount > 0:
         order_type |= BUY
     else:
@@ -68,27 +88,27 @@ def check_order_triggers(order, event):
         order_type |= LIMIT
 
     if order_type == BUY | STOP | LIMIT:
-        if event.price >= order.stop:
+        if event_price >= order.stop:
             sl_stop_reached = True
-            if event.price <= order.limit:
+            if event_price <= order.limit:
                 limit_reached = True
     elif order_type == SELL | STOP | LIMIT:
-        if event.price <= order.stop:
+        if event_price <= order.stop:
             sl_stop_reached = True
-            if event.price >= order.limit:
+            if event_price >= order.limit:
                 limit_reached = True
     elif order_type == BUY | STOP:
-        if event.price >= order.stop:
+        if event_price >= order.stop:
             stop_reached = True
     elif order_type == SELL | STOP:
-        if event.price <= order.stop:
+        if event_price <= order.stop:
             stop_reached = True
     elif order_type == BUY | LIMIT:
-        if event.price <= order.limit:
+        if event_price <= order.limit:
             limit_reached = True
     elif order_type == SELL | LIMIT:
         # This is a SELL LIMIT order
-        if event.price >= order.limit:
+        if event_price >= order.limit:
             limit_reached = True
 
     return (stop_reached, limit_reached, sl_stop_reached)
@@ -216,10 +236,12 @@ class VolumeShareSlippage(SlippageModel):
 
     def __init__(self,
                  volume_limit=.25,
-                 price_impact=0.1):
+                 price_impact=0.1,
+                 take_market=False):
 
         self.volume_limit = volume_limit
         self.price_impact = price_impact
+        self.take_market = take_market
 
     def __repr__(self):
         return """
@@ -253,12 +275,17 @@ class VolumeShareSlippage(SlippageModel):
         total_volume = self.volume_for_bar + cur_volume
 
         volume_share = min(total_volume / event.volume,
-                           self.volume_limit)
+                               self.volume_limit)
+
+        if self.take_market:
+            event_price = get_market_price(order, event)
+        else:
+            event_price = event.price
 
         simulated_impact = volume_share ** 2 \
             * math.copysign(self.price_impact, order.direction) \
-            * event.price
-        impacted_price = event.price + simulated_impact
+            * event_price
+        impacted_price = event_price + simulated_impact
 
         if order.limit:
             # this is tricky! if an order with a limit price has reached
@@ -302,19 +329,25 @@ class VolumeShareSlippage(SlippageModel):
 
 class FixedSlippage(SlippageModel):
 
-    def __init__(self, spread=0.0):
+    def __init__(self, spread=0.0, take_market=False):
         """
         Use the fixed slippage model, which will just add/subtract
         a specified spread spread/2 will be added on buys and subtracted
         on sells per share
         """
         self.spread = spread
-
+        self.take_market = take_market
+ 
     def process_order(self, event, order):
+        if self.take_market:
+            event_price = get_market_price(order, event)
+        else:
+            event_price = event.price
+
         return create_transaction(
             event,
             order,
-            event.price + (self.spread / 2.0 * order.direction),
+            event_price + (self.spread / 2.0 * order.direction),
             order.amount,
         )
 

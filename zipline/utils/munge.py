@@ -12,9 +12,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+#<JDG>
 import pandas.core.common as com
-
-
+"""
+from pandas.core.common import mask_missing
+try:
+    from pandas.core.common import backfill_2d, pad_2d
+except ImportError:
+    # In 0.17, pad_2d and backfill_2d werw moved from pandas.core.common to
+    # pandas.core.missing
+    from pandas.core.missing import backfill_2d, pad_2d
+"""
 def _interpolate(values, method, axis=None):
     if values.ndim == 1:
         axis = 0

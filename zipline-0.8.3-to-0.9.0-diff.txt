@@ -1,0 +1,30 @@
+diff zipline-0.9.0/etc/requirements.txt zipline-0.8.0/etc/requirements.txt  
+
+3,4d2
+< # bcolz fails to install if this is not in the build_requires.
+< setuptools>18.0
+7c5
+< Logbook==0.12.5
+---
+> Logbook==0.10.0
+21a20
+> # Don't use 2.4.0.
+23c22
+< six==1.10.0
+---
+> six==1.9.0
+26c25
+< requests==2.9.1
+---
+> requests==2.7.0
+38,39d36
+< # networkx requires decorator
+< decorator==4.0.0
+44c41
+< numexpr==2.4.6
+---
+> numexpr==2.4.3
+47c44
+< bcolz==0.12.1
+---
+> bcolz==0.10.0

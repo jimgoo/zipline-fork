@@ -185,10 +185,9 @@ def pre_setup():
     required = ('Cython', 'numpy')
     for line in module_requirements('etc/requirements.txt', required):
         pip.main(['install', line])
-
+        print(line)
 
 pre_setup()
-
 
 setup(
     name='zipline',
