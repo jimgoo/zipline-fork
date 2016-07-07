@@ -596,6 +596,10 @@ class TradingAlgorithm(object):
         for perf in self.gen:
             perfs.append(perf)
 
+        #<JDG>
+        print 'Setting algo.perfs_list as an attribute.'
+        self.perfs_list = perfs
+
         # convert perf dict to pandas dataframe
         daily_stats = self._create_daily_stats(perfs)
 
