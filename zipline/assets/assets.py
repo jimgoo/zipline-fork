@@ -76,8 +76,8 @@ class AssetFinder(object):
     PERSISTENT_TOKEN = "<AssetFinder>"
 
     def __init__(self, engine):
-        print '='*100
-        print 'engine = %s' % str(engine)
+        #print '='*100
+        #print 'engine = %s' % str(engine)
         
         self.engine = engine
         metadata = sa.MetaData(bind=engine)

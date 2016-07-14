@@ -104,7 +104,7 @@ def analyze2(context=None, results=None):
 
 
 def analyze(context=None, results=None):
-    print(results)
+    print(results.head())
 
 # Note: this if-block should be removed if running
 # this algorithm on quantopian.com
@@ -115,8 +115,11 @@ if __name__ == '__main__':
     from zipline.utils.factory import load_from_yahoo
 
     # Set the simulation start and end dates.
-    start = datetime(2011, 1, 1, 0, 0, 0, 0, pytz.utc)
+    start = datetime(2009, 1, 1, 0, 0, 0, 0, pytz.utc)
     end = datetime(2013, 1, 1, 0, 0, 0, 0, pytz.utc)
+
+    print start
+    print end
 
     # Load price data from yahoo.
     data = load_from_yahoo(stocks=['AAPL'], indexes={}, start=start,
@@ -129,3 +132,4 @@ if __name__ == '__main__':
 
     # Plot the portfolio and asset data.
     analyze(results=results)
+    
