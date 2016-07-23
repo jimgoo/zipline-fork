@@ -19,9 +19,9 @@
 try:
     from pandas.core.common import backfill_2d, pad_2d, mask_missing
 except ImportError:
-    print('ImportError in munge.py:')
-    print('In Pandas 0.17, pad_2d, backfill_2d, and mask_missing were ' 
-          'moved from `pandas.core.common` to `pandas.core.missing`.')
+    #print('ImportError in munge.py:')
+    #print('In Pandas 0.17, pad_2d, backfill_2d, and mask_missing were ' 
+    #      'moved from `pandas.core.common` to `pandas.core.missing`.')
     from pandas.core.missing import backfill_2d, pad_2d, mask_missing
 
 def _interpolate(values, method, axis=None):

@@ -199,6 +199,11 @@ class TradingAlgorithm(object):
 
         self.instant_fill = kwargs.pop('instant_fill', False)
 
+        # Alternative way of setting data_frequency for backwards
+        # compatibility.
+        # if 'data_frequency' in kwargs:
+        #     self.data_frequency = kwargs.pop('data_frequency')
+
         # If an env has been provided, pop it
         self.trading_environment = kwargs.pop('env', None)
 
@@ -215,11 +220,18 @@ class TradingAlgorithm(object):
         # set the capital base
         self.capital_base = kwargs.pop('capital_base', DEFAULT_CAPITAL_BASE)
         self.sim_params = kwargs.pop('sim_params', None)
+
+        if 'data_frequency' not in kwargs:
+            emission_rate = 'daily'
+        else:
+            emission_rate = kwargs['data_frequency']
+
         if self.sim_params is None:
             self.sim_params = create_simulation_parameters(
                 capital_base=self.capital_base,
                 start=kwargs.pop('start', None),
                 end=kwargs.pop('end', None),
+                emission_rate=emission_rate,
                 env=self.trading_environment,
             )
         else:
@@ -241,8 +253,10 @@ class TradingAlgorithm(object):
 
         self.blotter = kwargs.pop('blotter', None)
         self.take_market = kwargs.pop('take_market', False)
-        print '-'*60
-        print 'algorithm.py: take market = %s, be sure to set slippage parameter accordingly' % self.take_market
+        
+        # print '-'*60
+        # print 'algorithm.py: take market = %s, be sure to set slippage parameter accordingly' % self.take_market
+        
         if not self.blotter:
             self.blotter = Blotter(take_market=self.take_market)
 
@@ -315,6 +329,7 @@ class TradingAlgorithm(object):
         if self._initialize is None:
             self._initialize = lambda x: None
 
+        # JDG moved up 
         # Alternative way of setting data_frequency for backwards
         # compatibility.
         if 'data_frequency' in kwargs:
@@ -326,6 +341,10 @@ class TradingAlgorithm(object):
         self.initialized = False
         self.initialize_args = args
         self.initialize_kwargs = kwargs
+
+        # List to hold the perf messages emitted by the main trading loop.
+        self.perfs = []
+        self.perfs_yielded = []
 
     def init_engine(self, get_loader):
         """
@@ -595,10 +614,7 @@ class TradingAlgorithm(object):
         perfs = []
         for perf in self.gen:
             perfs.append(perf)
-
-        #<JDG>
-        #print 'Setting algo.perfs_list as an attribute.'
-        #self.perfs_list = perfs
+        self.perfs = perfs
 
         # convert perf dict to pandas dataframe
         daily_stats = self._create_daily_stats(perfs)
@@ -639,7 +655,6 @@ class TradingAlgorithm(object):
         # warning.
         for perf in perfs:
             if 'daily_perf' in perf:
-
                 perf['daily_perf'].update(
                     perf['daily_perf'].pop('recorded_vars')
                 )
@@ -1502,3 +1517,158 @@ class TradingAlgorithm(object):
             fn for fn in itervalues(vars(cls))
             if getattr(fn, 'is_api_method', False)
         ]
+
+
+    def run2(self, source, overwrite_sim_params=True,
+            benchmark_return_source=None, is_slave=False):
+        """Run the algorithm.
+
+        This version allows manual iteration over self.gen.
+
+        :Arguments:
+            source : can be either:
+                     - pandas.DataFrame
+                     - zipline source
+                     - list of sources
+
+               If pandas.DataFrame is provided, it must have the
+               following structure:
+               * column names must be the different asset identifiers
+               * index must be DatetimeIndex
+               * array contents should be price info.
+
+        :Returns:
+            daily_stats : pandas.DataFrame
+              Daily performance metrics such as returns, alpha etc.
+
+        """
+
+        # Ensure that source is a DataSource object
+        if isinstance(source, list):
+            if overwrite_sim_params:
+                warnings.warn("""List of sources passed, will not attempt to extract start and end
+ dates. Make sure to set the correct fields in sim_params passed to
+ __init__().""", UserWarning)
+                overwrite_sim_params = False
+        elif isinstance(source, pd.DataFrame):
+            # if DataFrame provided, map columns to sids and wrap
+            # in DataFrameSource
+            copy_frame = source.copy()
+            copy_frame.columns = self._write_and_map_id_index_to_sids(
+                source.columns, source.index[0],
+            )
+            source = DataFrameSource(copy_frame)
+
+        elif isinstance(source, pd.Panel):
+            # If Panel provided, map items to sids and wrap
+            # in DataPanelSource
+            copy_panel = source.copy()
+            copy_panel.items = self._write_and_map_id_index_to_sids(
+                source.items, source.major_axis[0],
+            )
+            source = DataPanelSource(copy_panel)
+
+        if isinstance(source, list):
+            self.set_sources(source)
+        else:
+            self.set_sources([source])
+
+        # Override sim_params if params are provided by the source.
+        if overwrite_sim_params:
+            if hasattr(source, 'start'):
+                self.sim_params.period_start = source.start
+            if hasattr(source, 'end'):
+                self.sim_params.period_end = source.end
+            # Changing period_start and period_close might require updating
+            # of first_open and last_close.
+            self.sim_params.update_internal_from_env(
+                env=self.trading_environment
+            )
+
+        # The sids field of the source is the reference for the universe at
+        # the start of the run
+        self._current_universe = set()
+        for source in self.sources:
+            for sid in source.sids:
+                self._current_universe.add(sid)
+        # Check that all sids from the source are accounted for in
+        # the AssetFinder. This retrieve call will raise an exception if the
+        # sid is not found.
+        for sid in self._current_universe:
+            self.asset_finder.retrieve_asset(sid)
+
+        # force a reset of the performance tracker, in case
+        # this is a repeat run of the algorithm.
+        self.perf_tracker = None
+
+        # create zipline
+        self.gen = self._create_generator(self.sim_params)
+
+        # Create history containers
+        if self.history_specs:
+            self.history_container = self.history_container_class(
+                self.history_specs,
+                self.current_universe(),
+                self.sim_params.first_open,
+                self.sim_params.data_frequency,
+                self.trading_environment,
+            )
+
+        # <JDG> For master/slave multi-algo runner.
+        # Slave algos don't do anything
+        self.is_slave = is_slave
+        if is_slave:
+            return None
+
+        # loop through simulated_trading, each iteration returns a perf dictionary
+        # perfs = []
+        # for perf in self.gen:
+        #     perfs.append(perf)
+
+        self.perfs = []
+        self.perfs_yielded = []
+
+    def get_next_perf(self):
+        """
+        Get the next perf message from `self.gen`. 
+        Returns:
+                None: if we are done
+                perf: if we are not done, can be one of three types:
+                    - daily_perf
+                    - minute_perf
+                    - last_perf on the final message, with keys:
+                        ['twelve_month', 'one_month', 'three_month', 'six_month']
+        """
+        try:
+            perf = self.gen.next()
+            
+            # daily_perf must be skipped so that we don't trade twice on same day
+            if 'daily_perf' in perf.keys():
+                # Append `daily_perf` to list.
+                self.perfs.append(perf)
+
+                # Get the next `minute_perf` (or possibly `last_perf`)
+                perf = self.gen.next()
+                assert 'daily_perf' not in perf.keys()
+                
+            # Append `minute_perf` or `last_perf` to list, with
+            # `daily_perf` already possibly added above.
+            self.perfs.append(perf)
+
+            # Append `minute_perf` or `last_perf` to list
+            self.perfs_yielded.append(perf)
+
+            return perf
+
+        except StopIteration:
+            return None
+
+
+    def create_results(self):
+        """
+        Create Zipline results DataFrame from ALL perfs.
+        """
+        daily_stats = self._create_daily_stats(self.perfs)
+        self.analyze(daily_stats)
+        return daily_stats
+

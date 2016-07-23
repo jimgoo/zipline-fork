@@ -1,5 +1,3 @@
-import sys
-import logbook
 import numpy as np
 from datetime import datetime
 import pytz
@@ -8,15 +6,8 @@ from zipline.algorithm import TradingAlgorithm
 from zipline.utils.factory import load_from_yahoo
 from zipline.finance import commission
 
-zipline_logging = logbook.NestedSetup([
-    logbook.NullHandler(level=logbook.DEBUG, bubble=True),
-    logbook.StreamHandler(sys.stdout, level=logbook.INFO),
-    logbook.StreamHandler(sys.stderr, level=logbook.ERROR),
-])
-zipline_logging.push_application()
-
-STOCKS = ['AMD', 'CERN', 'COST', 'DELL', 'GPS', 'INTC', 'MMM']
-
+#STOCKS = ['AMD', 'CERN', 'COST', 'DELL', 'GPS', 'INTC', 'MMM']
+STOCKS = ['EEM', 'EFA', 'EWJ', 'ICF', 'IEF', 'IEV', 'IWM', 'IVV', 'TIP', 'TLT']
 
 # On-Line Portfolio Moving Average Reversion
 
@@ -40,7 +31,7 @@ def initialize(algo, eps=1, window_length=5):
 
 def handle_data(algo, data):
     algo.days += 1
-    if algo.days < algo.window_length:
+    if algo.days < algo.window_length + 1:
         return
 
     if algo.init:
@@ -150,27 +141,32 @@ def simplex_projection(v, b=1):
     return w
 
 
-# Note: this function can be removed if running
-# this algorithm on quantopian.com
-def analyze(context=None, results=None):
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    results.portfolio_value.plot(ax=ax)
-    ax.set_ylabel('Portfolio value (USD)')
-    plt.show()
+# # Note: this function can be removed if running
+# # this algorithm on quantopian.com
+# def analyze(context=None, results=None):
+#     import matplotlib.pyplot as plt
+#     fig = plt.figure()
+#     ax = fig.add_subplot(111)
+#     results.portfolio_value.plot(ax=ax)
+#     ax.set_ylabel('Portfolio value (USD)')
+#     plt.show()
 
 
 # Note: this if-block should be removed if running
 # this algorithm on quantopian.com
 if __name__ == '__main__':
-    # Set the simulation start and end dates.
-    start = datetime(2004, 1, 1, 0, 0, 0, 0, pytz.utc)
+    start = datetime(2007, 1, 1, 0, 0, 0, 0, pytz.utc)
     end = datetime(2008, 1, 1, 0, 0, 0, 0, pytz.utc)
 
-    # Load price data from yahoo.
-    data = load_from_yahoo(stocks=STOCKS, indexes={}, start=start, end=end)
-    data = data.dropna()
+    if False:
+        # Load price data from yahoo.
+        data = load_from_yahoo(stocks=STOCKS, indexes={}, start=start, end=end)
+        data = data.dropna()
+    else:
+        from pulley.utils.data_io import load_pickle
+        data = load_pickle('/media/ssd/quant-quote/df-minbar-11-etfs-20040102-20140506-close-only-prepro.pkl')
+        data = data.loc[STOCKS, start:end, 'price']
+        #data.items = np.arange(0, len(data.items)) # for sid's
 
     # Create and run the algorithm.
     olmar = TradingAlgorithm(handle_data=handle_data,
@@ -179,4 +175,4 @@ if __name__ == '__main__':
     results = olmar.run(data)
 
     # Plot the portfolio data.
-    analyze(results=results)
+    # analyze(results=results)

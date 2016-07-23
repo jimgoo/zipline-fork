@@ -311,10 +311,15 @@ class AlgorithmSimulator(object):
                         perf_process_order(order)
                 perf_process_trade(trade)
 
-        if benchmark_event_occurred:
-            return self.generate_messages(dt)
+        # <JDG> Always emit a message in minute mode, regardless of a benchmark event occuring,
+        # because the built-in benchmark data has no minute bars.
+        if self.algo.perf_tracker.emission_rate == 'daily':
+            if benchmark_event_occurred:
+                return self.generate_messages(dt)
+            else:
+                return ()
         else:
-            return ()
+            return self.generate_messages(dt)
 
     def _call_handle_data(self):
         """
