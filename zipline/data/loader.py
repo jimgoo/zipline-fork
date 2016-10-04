@@ -18,7 +18,9 @@ from collections import OrderedDict
 import logbook
 
 import pandas as pd
-from pandas.io.data import DataReader
+# <JDG>
+#from pandas.io.data import DataReader 
+from pandas_datareader.data import DataReader
 import pytz
 
 from six import iteritems
