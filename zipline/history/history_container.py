@@ -790,7 +790,7 @@ class HistoryContainer(object):
                 index=columns,
             ).values
 
-        if field in ['price', 'close_price', 'ret_z']: # <JDG> added ret_z
+        if field in ['price', 'close_price']:
             # shortcircuit for full last row
             vals = frame[-1]
             if np.all(~np.isnan(vals)):
