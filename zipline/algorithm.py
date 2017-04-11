@@ -15,6 +15,7 @@
 from copy import copy
 import warnings
 
+import time
 import pytz
 import pandas as pd
 from pandas.tseries.tools import normalize_date
@@ -454,17 +455,27 @@ class TradingAlgorithm(object):
         else:
             benchmark_return_source = self.benchmark_return_source
 
+        t0 = time.time()
         date_sorted = date_sorted_sources(*self.sources)
+        print 'Time for `date_sorted_sources`: %.4f s' % (time.time() - t0)
 
+        t0 = time.time()
         if source_filter:
             date_sorted = filter(source_filter, date_sorted)
+        print 'filter: %.4fs' % (time.time() - t0)
 
+        t0 = time.time()
         with_benchmarks = date_sorted_sources(benchmark_return_source,
                                               date_sorted)
+        print 'Time for `date_sorted_sources` with benchmarks: %.4f s' % (time.time() - t0)
 
         # Group together events with the same dt field. This depends on the
         # events already being sorted.
-        return groupby(with_benchmarks, attrgetter('dt'))
+        t0 = time.time()
+        grouped = groupby(with_benchmarks, attrgetter('dt'))
+        print 'Time for `groupby`: %.4f s' % (time.time() - t0)
+
+        return grouped
 
     def _create_generator(self, sim_params, source_filter=None):
         """
@@ -491,7 +502,9 @@ class TradingAlgorithm(object):
         self.account_needs_update = True
         self.performance_needs_update = True
 
+        t0 = time.time()
         self.data_gen = self._create_data_generator(source_filter, sim_params)
+        print '_create_data_generator: %.4fs' % (time.time() - t0)
 
         self.trading_client = AlgorithmSimulator(self, sim_params)
 
@@ -1519,11 +1532,10 @@ class TradingAlgorithm(object):
         ]
 
 
-    def run2(self, source, overwrite_sim_params=True,
-            benchmark_return_source=None, is_slave=False):
-        """Run the algorithm.
-
-        This version allows manual iteration over self.gen.
+    def prepare_for_run(self, source, overwrite_sim_params=True,
+                        benchmark_return_source=None, is_slave=False):
+        """
+        Similar to `self.run`, except this doesn't do the iteration over the zipline.
 
         :Arguments:
             source : can be either:
@@ -1542,7 +1554,6 @@ class TradingAlgorithm(object):
               Daily performance metrics such as returns, alpha etc.
 
         """
-
         # Ensure that source is a DataSource object
         if isinstance(source, list):
             if overwrite_sim_params:
@@ -1601,8 +1612,12 @@ class TradingAlgorithm(object):
         # this is a repeat run of the algorithm.
         self.perf_tracker = None
 
+        ## <JDG> This is the step that is most expensive.
         # create zipline
+        t0 = time.time()
+        print 'Creating generator...'
         self.gen = self._create_generator(self.sim_params)
+        print 'Done in %.2f seconds.' % (time.time()-t0)
 
         # Create history containers
         if self.history_specs:
@@ -1632,12 +1647,12 @@ class TradingAlgorithm(object):
         """
         Get the next perf message from `self.gen`. 
         Returns:
-                None: if we are done
-                perf: if we are not done, can be one of three types:
-                    - daily_perf
-                    - minute_perf
-                    - last_perf on the final message, with keys:
-                        ['twelve_month', 'one_month', 'three_month', 'six_month']
+            None: if we are done
+            perf: if we are not done, can be one of three types:
+                - daily_perf
+                - minute_perf
+                - last_perf on the final message, with keys:
+                    ['twelve_month', 'one_month', 'three_month', 'six_month']
         """
         try:
             perf = self.gen.next()
@@ -1663,7 +1678,6 @@ class TradingAlgorithm(object):
         except StopIteration:
             return None
 
-
     def create_results(self):
         """
         Create Zipline results DataFrame from ALL perfs.
@@ -1671,4 +1685,3 @@ class TradingAlgorithm(object):
         daily_stats = self._create_daily_stats(self.perfs)
         self.analyze(daily_stats)
         return daily_stats
-
