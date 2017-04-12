@@ -457,23 +457,23 @@ class TradingAlgorithm(object):
 
         t0 = time.time()
         date_sorted = date_sorted_sources(*self.sources)
-        print 'Time for `date_sorted_sources`: %.4f s' % (time.time() - t0)
+        #print 'zipline.algorithm.date_sorted_sources: %.4f sec' % (time.time() - t0)
 
         t0 = time.time()
         if source_filter:
             date_sorted = filter(source_filter, date_sorted)
-        print 'filter: %.4fs' % (time.time() - t0)
+        #print 'zipline.algorithm.filter: %.4f sec' % (time.time() - t0)
 
         t0 = time.time()
         with_benchmarks = date_sorted_sources(benchmark_return_source,
                                               date_sorted)
-        print 'Time for `date_sorted_sources` with benchmarks: %.4f s' % (time.time() - t0)
+        #print 'Time for `date_sorted_sources` with benchmarks: %.4f s' % (time.time() - t0)
 
         # Group together events with the same dt field. This depends on the
         # events already being sorted.
         t0 = time.time()
         grouped = groupby(with_benchmarks, attrgetter('dt'))
-        print 'Time for `groupby`: %.4f s' % (time.time() - t0)
+        #print 'Time for `groupby`: %.4f s' % (time.time() - t0)
 
         return grouped
 
@@ -504,7 +504,7 @@ class TradingAlgorithm(object):
 
         t0 = time.time()
         self.data_gen = self._create_data_generator(source_filter, sim_params)
-        print '_create_data_generator: %.4fs' % (time.time() - t0)
+        #print '_create_data_generator: %.4fs' % (time.time() - t0)
 
         self.trading_client = AlgorithmSimulator(self, sim_params)
 
@@ -1615,9 +1615,9 @@ class TradingAlgorithm(object):
         ## <JDG> This is the step that is most expensive.
         # create zipline
         t0 = time.time()
-        print 'Creating generator...'
+        #print 'zipline.algorithm._create_generator...'
         self.gen = self._create_generator(self.sim_params)
-        print 'Done in %.2f seconds.' % (time.time()-t0)
+        #print 'Done in %.2f seconds.' % (time.time()-t0)
 
         # Create history containers
         if self.history_specs:
