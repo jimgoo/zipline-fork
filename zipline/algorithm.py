@@ -109,35 +109,7 @@ from zipline.history.history_container import HistoryContainer
 DEFAULT_CAPITAL_BASE = float("1.0e5")
 
 
-import multiprocessing as mp
-import Queue
-import threading
-
-def buffered_gen_mp(source_gen, buffer_size=2):
-    """
-    Generator that runs a slow source generator in a separate process.
-    buffer_size: the maximal number of items to pre-generate (length of the buffer)
-    """
-
-    if buffer_size < 2:
-        raise RuntimeError("Minimal buffer size is 2!")
- 
-    buffer = mp.Queue(maxsize=buffer_size - 1)
-    # the effective buffer size is one less, because the generation process
-    # will generate one extra element and block until there is room in the buffer.
- 
-    def _buffered_generation_process(source_gen, buffer):
-        for data in source_gen:
-            buffer.put(data, block=True)
-        buffer.put(None) # sentinel: signal the end of the iterator
-        buffer.close() # unfortunately this does not suffice as a signal: if buffer.get()
-        # was called and subsequently the buffer is closed, it will block forever.
- 
-    process = mp.Process(target=_buffered_generation_process, args=(source_gen, buffer))
-    process.start()
- 
-    for data in iter(buffer.get, None):
-        yield data
+from pulley.utils.buffered_gens import buffered_gen_mp, buffered_gen_threaded
 
 
 class TradingAlgorithm(object):
@@ -240,7 +212,8 @@ class TradingAlgorithm(object):
         self.trading_environment = kwargs.pop('env', None)
 
         if self.trading_environment is None:
-            self.trading_environment = TradingEnvironment()
+            print('\nCreating TradingEnvironment with restricted dates...')
+            self.trading_environment = TradingEnvironment(min_date=None, max_date=None)
 
         # Update the TradingEnvironment with the provided asset metadata
         self.trading_environment.write_data(
@@ -637,6 +610,8 @@ class TradingAlgorithm(object):
 
         # create zipline
         self.gen = self._create_generator(self.sim_params)
+        #self.gen = buffered_gen_threaded(self.gen, buffer_size=2)
+        #self.gen = buffered_gen_mp(self.gen, buffer_size=4)
 
         # Create history containers
         if self.history_specs:
@@ -654,18 +629,10 @@ class TradingAlgorithm(object):
         self.is_slave = is_slave
         if is_slave:
             return None
-    
-        if 1:    
-            perfs = []
-            for perf in self.gen:
-                perfs.append(perf)
-        else:
-            buffer_size = 8
-            print('\n\nUsing buffered gen w/size %i...\n\n' % buffer_size)
-            perfs = []
-            for perf in buffered_gen_mp(self.gen, buffer_size=buffer_size):
-                perfs.append(perf)
 
+        perfs = []
+        for perf in self.gen:
+            perfs.append(perf)
         self.perfs = perfs
 
         # convert perf dict to pandas dataframe

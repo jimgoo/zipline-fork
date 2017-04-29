@@ -68,6 +68,7 @@ class TradingEnvironment(object):
         load=None,
         bm_symbol='^GSPC',
         exchange_tz="US/Eastern",
+        min_date=None,
         max_date=None,
         env_trading_calendar=tradingcalendar,
         asset_db_path=':memory:'
@@ -80,18 +81,25 @@ class TradingEnvironment(object):
         self.trading_day = env_trading_calendar.trading_day.copy()
 
         # `tc_td` is short for "trading calendar trading days"
-        tc_td = env_trading_calendar.trading_days
+        tc_td = env_trading_calendar.trading_days.copy()
+
+        if min_date:
+            tc_td = tc_td[tc_td >= min_date]
 
         if max_date:
-            self.trading_days = tc_td[tc_td <= max_date].copy()
-        else:
-            self.trading_days = tc_td.copy()
+            tc_td = tc_td[tc_td <= max_date]
+
+        self.trading_days = tc_td
 
         self.first_trading_day = self.trading_days[0]
         self.last_trading_day = self.trading_days[-1]
 
         print('='*100)
-        print("\n\nfirst day: %s, last day: %s\n\n" % (str(self.first_trading_day), str(self.last_trading_day)))
+        print("first day: %s, last day: %s, n_days: %i\n" % (str(self.first_trading_day), str(self.last_trading_day), 
+                                                             len(self.trading_days)))
+        # print(self.first_trading_day)
+        # print(type(self.first_trading_day))
+        # print(self.first_trading_day.tz)
 
         self.early_closes = env_trading_calendar.get_early_closes(
             self.first_trading_day, self.last_trading_day)
@@ -235,7 +243,7 @@ class TradingEnvironment(object):
     def next_trading_day(self, test_date):
         dt = self.normalize_date(test_date)
         delta = datetime.timedelta(days=1)
-
+        #print(len(self.trading_days))
         while dt <= self.last_trading_day:
             dt += delta
             if dt in self.trading_days:
