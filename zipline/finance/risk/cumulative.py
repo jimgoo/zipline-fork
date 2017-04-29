@@ -26,13 +26,21 @@ from pandas.tseries.tools import normalize_date
 from six import iteritems
 
 from . risk import (
-    alpha,
     check_entry,
     choose_treasury,
+)
+
+from empyrical import (
+    alpha_beta_aligned,
+    annual_volatility,
+    cum_returns,
     downside_risk,
+    information_ratio,
+    max_drawdown,
     sharpe_ratio,
     sortino_ratio,
 )
+
 
 from zipline.utils.serialization_utils import (
     VERSION_LABEL
@@ -43,34 +51,6 @@ log = logbook.Logger('Risk Cumulative')
 
 choose_treasury = functools.partial(choose_treasury, lambda *args: '10year',
                                     compound=False)
-
-
-def information_ratio(algo_volatility, algorithm_return, benchmark_return):
-    """
-    http://en.wikipedia.org/wiki/Information_ratio
-
-    Args:
-        algorithm_returns (np.array-like):
-            All returns during algorithm lifetime.
-        benchmark_returns (np.array-like):
-            All benchmark returns during algo lifetime.
-
-    Returns:
-        float. Information ratio.
-    """
-    if zp_math.tolerant_equals(algo_volatility, 0):
-        return np.nan
-
-    # The square of the annualization factor is in the volatility,
-    # because the volatility is also annualized,
-    # i.e. the sqrt(annual factor) is in the volatility's numerator.
-    # So to have the the correct annualization factor for the
-    # Sharpe value's numerator, which should be the sqrt(annual factor).
-    # The square of the sqrt of the annual factor, i.e. the annual factor
-    # itself, is needed in the numerator to factor out the division by
-    # its square root.
-    return (algorithm_return - benchmark_return) / algo_volatility
-
 
 class RiskMetricsCumulative(object):
     """
@@ -189,7 +169,7 @@ class RiskMetricsCumulative(object):
                 self.algorithm_returns = np.append(0.0, self.algorithm_returns)
 
         self.algorithm_cumulative_returns[dt_loc] = \
-            self.calculate_cumulative_returns(self.algorithm_returns)
+             cum_returns(self.algorithm_returns)[-1]
 
         algo_cumulative_returns_to_date = \
             self.algorithm_cumulative_returns[:dt_loc + 1]
@@ -219,7 +199,7 @@ class RiskMetricsCumulative(object):
                 self.benchmark_returns = np.append(0.0, self.benchmark_returns)
 
         self.benchmark_cumulative_returns[dt_loc] = \
-            self.calculate_cumulative_returns(self.benchmark_returns)
+            cum_returns(self.benchmark_returns)[-1]
 
         benchmark_cumulative_returns_to_date = \
             self.benchmark_cumulative_returns[:dt_loc + 1]
@@ -259,10 +239,12 @@ algorithm_returns ({algo_count}) in range {start} : {end} on {dt}"
             raise Exception(message)
 
         self.update_current_max()
+
         self.benchmark_volatility[dt_loc] = \
-            self.calculate_volatility(self.benchmark_returns)
+            annual_volatility(self.benchmark_returns)
+
         self.algorithm_volatility[dt_loc] = \
-            self.calculate_volatility(self.algorithm_returns)
+            annual_volatility(self.algorithm_returns)
 
         # caching the treasury rates for the minutely case is a
         # big speedup, because it avoids searching the treasury
@@ -281,15 +263,30 @@ algorithm_returns ({algo_count}) in range {start} : {end} on {dt}"
         self.excess_returns[dt_loc] = (
             self.algorithm_cumulative_returns[dt_loc] -
             self.treasury_period_return)
-        self.beta[dt_loc] = self.calculate_beta()
-        self.alpha[dt_loc] = self.calculate_alpha()
-        self.sharpe[dt_loc] = self.calculate_sharpe()
-        self.downside_risk[dt_loc] = \
-            self.calculate_downside_risk()
-        self.sortino[dt_loc] = self.calculate_sortino()
-        self.information[dt_loc] = self.calculate_information()
-        self.max_drawdown = self.calculate_max_drawdown()
+
+        self.alpha[dt_loc], self.beta[dt_loc] = alpha_beta_aligned(
+            self.algorithm_returns,
+            self.benchmark_returns,
+        )
+        self.sharpe[dt_loc] = sharpe_ratio(
+            self.algorithm_returns,
+        )
+        self.downside_risk[dt_loc] = downside_risk(
+            self.algorithm_returns
+        )
+        self.sortino[dt_loc] = sortino_ratio(
+            self.algorithm_returns,
+            _downside_risk=self.downside_risk[dt_loc]
+        )
+        self.information[dt_loc] = information_ratio(
+            self.algorithm_returns,
+            self.benchmark_returns,
+        )
+        self.max_drawdown = max_drawdown(
+            self.algorithm_returns
+        )
         self.max_drawdowns[dt_loc] = self.max_drawdown
+
         self.max_leverage = self.calculate_max_leverage()
         self.max_leverages[dt_loc] = self.max_leverage
 
@@ -343,8 +340,8 @@ algorithm_returns ({algo_count}) in range {start} : {end} on {dt}"
 
         return '\n'.join(statements)
 
-    def calculate_cumulative_returns(self, returns):
-        return (1. + returns).prod() - 1
+    # def calculate_cumulative_returns(self, returns):
+    #     return (1. + returns).prod() - 1
 
     def update_current_max(self):
         if len(self.algorithm_cumulative_returns) == 0:
@@ -385,76 +382,6 @@ algorithm_returns ({algo_count}) in range {start} : {end} on {dt}"
             self.latest_dt_loc]
 
         return max(cur_leverage, self.max_leverage)
-
-    def calculate_sharpe(self):
-        """
-        http://en.wikipedia.org/wiki/Sharpe_ratio
-        """
-        return sharpe_ratio(
-            self.algorithm_volatility[self.latest_dt_loc],
-            self.annualized_mean_returns_cont[self.latest_dt_loc],
-            self.daily_treasury[self.latest_dt.date()])
-
-    def calculate_sortino(self):
-        """
-        http://en.wikipedia.org/wiki/Sortino_ratio
-        """
-        return sortino_ratio(
-            self.annualized_mean_returns_cont[self.latest_dt_loc],
-            self.daily_treasury[self.latest_dt.date()],
-            self.downside_risk[self.latest_dt_loc])
-
-    def calculate_information(self):
-        """
-        http://en.wikipedia.org/wiki/Information_ratio
-        """
-        return information_ratio(
-            self.algorithm_volatility[self.latest_dt_loc],
-            self.annualized_mean_returns_cont[self.latest_dt_loc],
-            self.annualized_mean_benchmark_returns_cont[self.latest_dt_loc])
-
-    def calculate_alpha(self):
-        """
-        http://en.wikipedia.org/wiki/Alpha_(investment)
-        """
-        return alpha(
-            self.annualized_mean_returns_cont[self.latest_dt_loc],
-            self.treasury_period_return,
-            self.annualized_mean_benchmark_returns_cont[self.latest_dt_loc],
-            self.beta[self.latest_dt_loc])
-
-    def calculate_volatility(self, daily_returns):
-        if len(daily_returns) <= 1:
-            return 0.0
-        return np.std(daily_returns, ddof=1) * math.sqrt(252)
-
-    def calculate_downside_risk(self):
-        return downside_risk(self.algorithm_returns,
-                             self.mean_returns,
-                             252)
-
-    def calculate_beta(self):
-        """
-
-        .. math::
-
-            \\beta_a = \\frac{\mathrm{Cov}(r_a,r_p)}{\mathrm{Var}(r_p)}
-
-        http://en.wikipedia.org/wiki/Beta_(finance)
-        """
-        # it doesn't make much sense to calculate beta for less than two
-        # values, so return none.
-        if len(self.algorithm_returns) < 2:
-            return 0.0
-
-        returns_matrix = np.vstack([self.algorithm_returns,
-                                    self.benchmark_returns])
-        C = np.cov(returns_matrix, ddof=1)
-        algorithm_covariance = C[0][1]
-        benchmark_variance = C[1][1]
-        beta = algorithm_covariance / benchmark_variance
-
-        return beta
 
     def __getstate__(self):
         state_dict = {k: v for k, v in iteritems(self.__dict__)

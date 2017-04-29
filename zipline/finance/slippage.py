@@ -35,10 +35,6 @@ LIMIT = 1 << 3
 
 
 def get_market_price(order, event):
-    
-    #print 'Fetching bid/ask prices'
-    assert hasattr(event, 'ask'), 'Event has no `ask` attribute.'
-    assert hasattr(event, 'bid'), 'Event has no `bid` attribute.'
     if order.amount > 0:
         # buy at ask
         #print '\tUsing ask price, qty = %i' % order.amount

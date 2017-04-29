@@ -90,6 +90,9 @@ class TradingEnvironment(object):
         self.first_trading_day = self.trading_days[0]
         self.last_trading_day = self.trading_days[-1]
 
+        print('='*100)
+        print("\n\nfirst day: %s, last day: %s\n\n" % (str(self.first_trading_day), str(self.last_trading_day)))
+
         self.early_closes = env_trading_calendar.get_early_closes(
             self.first_trading_day, self.last_trading_day)
 
