@@ -16,6 +16,7 @@
 """
 Tools to generate data sources.
 """
+import time
 import numpy as np
 import pandas as pd
 
@@ -54,6 +55,8 @@ class DataFrameSource(DataSource):
         self._raw_data = None
 
         self.started_sids = set()
+        self.total_time = 0                
+        self.total_events = 0
 
     @property
     def mapping(self):
@@ -71,6 +74,8 @@ class DataFrameSource(DataSource):
     def raw_data_gen(self):
         for dt, series in self.data.iterrows():
             for sid, price in series.iteritems():
+                t0 = time.time()
+
                 # Skip SIDs that can not be forward filled
                 if np.isnan(price) and \
                    sid not in self.started_sids:
@@ -85,6 +90,8 @@ class DataFrameSource(DataSource):
                     # if no volume available.
                     'volume': 1e9,
                 }
+                self.total_time += time.time() - t0
+                self.total_events += 1
                 yield event
 
     @property
@@ -127,6 +134,9 @@ class DataPanelSource(DataSource):
 
         self.started_sids = set()
 
+        self.total_time = 0.
+        self.total_events = 0
+
     @property
     def mapping(self):
         mapping = {
@@ -152,6 +162,8 @@ class DataPanelSource(DataSource):
         for dt in self.data.major_axis:
             df = self.data.major_xs(dt)
             for sid, series in df.iteritems():
+                t0 = time.time()
+
                 # Skip SIDs that can not be forward filled
                 if np.isnan(series['price']) and \
                    sid not in self.started_sids:
@@ -165,6 +177,8 @@ class DataPanelSource(DataSource):
                 for field_name, value in series.iteritems():
                     event[field_name] = value
 
+                self.total_time += time.time() - t0
+                self.total_events += 1
                 yield event
 
     @property

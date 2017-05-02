@@ -34,15 +34,18 @@ STOP = 1 << 2
 LIMIT = 1 << 3
 
 
-def get_market_price(order, event):
-    if order.amount > 0:
-        # buy at ask
-        #print '\tUsing ask price, qty = %i' % order.amount
-        event_price = event.ask
-    elif order.amount < 0:
-        # sell at bid
-        #print '\tUsing bid price, qty = %i' % order.amount
-        event_price = event.bid
+def get_event_price(order, event):
+    if hasattr(event, 'bid') and hasattr(event, 'ask'):        
+        if order.amount > 0:
+            # buy at ask
+            #print('Using ask price, qty = %i, sid= %i' % (order.amount, order.sid))
+            event_price = event.ask
+        elif order.amount < 0:
+            # sell at bid
+            #print('Using bid price, qty = %i, sid = %i' % (order.amount, order.sid))
+            event_price = event.bid
+    else:
+        return event.price
     return event_price
 
 def check_order_triggers(order, event, take_market=False):
@@ -68,7 +71,7 @@ def check_order_triggers(order, event, take_market=False):
     order_type = 0
 
     if take_market:
-        event_price = get_market_price(order, event)
+        event_price = get_event_price(order, event)
     else:
         event_price = event.price
 
@@ -274,7 +277,7 @@ class VolumeShareSlippage(SlippageModel):
                                self.volume_limit)
 
         if self.take_market:
-            event_price = get_market_price(order, event)
+            event_price = get_event_price(order, event)
         else:
             event_price = event.price
 
@@ -336,7 +339,7 @@ class FixedSlippage(SlippageModel):
  
     def process_order(self, event, order):
         if self.take_market:
-            event_price = get_market_price(order, event)
+            event_price = get_event_price(order, event)
         else:
             event_price = event.price
 

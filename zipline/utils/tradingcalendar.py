@@ -23,7 +23,7 @@ start = pd.Timestamp('1990-01-01', tz='UTC')
 end_base = pd.Timestamp('today', tz='UTC')
 # Give an aggressive buffer for logic that needs to use the next trading
 # day or minute.
-end = end_base + pd.Timedelta(days=365)
+end = end_base + pd.Timedelta(days=365*10) # <JDG> increased to 1 year to 10 for long dated options
 
 
 def canonicalize_datetime(dt):
