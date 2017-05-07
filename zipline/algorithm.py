@@ -212,7 +212,7 @@ class TradingAlgorithm(object):
         self.trading_environment = kwargs.pop('env', None)
 
         if self.trading_environment is None:
-            print('\nCreating TradingEnvironment with restricted dates...')
+            # here is where you'd chop the dates down
             self.trading_environment = TradingEnvironment(min_date=None, max_date=None)
 
         # Update the TradingEnvironment with the provided asset metadata
@@ -259,8 +259,8 @@ class TradingAlgorithm(object):
         self.blotter = kwargs.pop('blotter', None)
         self.take_market = kwargs.pop('take_market', False)
         
-        print('-'*60)
-        print('algorithm.py: take market = %s, be sure to set slippage parameter accordingly' % self.take_market)
+        # print('-'*60)
+        # print('algorithm.py: take market = %s, be sure to set slippage parameter accordingly' % self.take_market)
         
         if not self.blotter:
             self.blotter = Blotter(take_market=self.take_market)
