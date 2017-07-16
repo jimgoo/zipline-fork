@@ -461,26 +461,26 @@ class TradingAlgorithm(object):
         else:
             benchmark_return_source = self.benchmark_return_source
 
-        print('\nCreating data gen in zipline...')
+        #print('\nCreating data gen in zipline...')
         t0 = time.time()
         date_sorted = date_sorted_sources(*self.sources)
-        print('date_sorted_sources: %.4f sec' % (time.time() - t0))
+        #print('date_sorted_sources: %.4f sec' % (time.time() - t0))
 
         t0 = time.time()
         if source_filter:
             date_sorted = filter(source_filter, date_sorted)
-        print('filter: %.4f sec' % (time.time() - t0))
+        #print('filter: %.4f sec' % (time.time() - t0))
 
         t0 = time.time()
         with_benchmarks = date_sorted_sources(benchmark_return_source,
                                               date_sorted)
-        print('date_sorted_sources for benchmarks: %.4f s' % (time.time() - t0))
+        #print('date_sorted_sources for benchmarks: %.4f s' % (time.time() - t0))
 
         # Group together events with the same dt field. This depends on the
         # events already being sorted.
         t0 = time.time()
         grouped = groupby(with_benchmarks, attrgetter('dt'))
-        print('groupby: %.4f s' % (time.time() - t0))
+        #print('groupby: %.4f s' % (time.time() - t0))
 
         return grouped
 
@@ -511,7 +511,7 @@ class TradingAlgorithm(object):
 
         t0 = time.time()
         self.data_gen = self._create_data_generator(source_filter, sim_params)
-        print('_create_data_generator: %.4fs' % (time.time() - t0))
+        #print('_create_data_generator: %.4fs' % (time.time() - t0))
 
         self.trading_client = AlgorithmSimulator(self, sim_params)
 
@@ -638,19 +638,19 @@ class TradingAlgorithm(object):
         for perf in self.gen:
             perfs.append(perf)
 
-        print('\nTime for self.gen: %.4f s' % (time.time() - t0))    
+        #print('\nTime for self.gen: %.4f s' % (time.time() - t0))    
         
         self.perfs = perfs #<JDG> For manual iteration with gym env
 
         for src in self.sources:
-            print('-'*20)
-            print(type(src))
+            #print('-'*20)
+            #print(type(src))
             if hasattr(src, 'total_time') and hasattr(src, 'total_events'):
                 dt = src.total_time
                 n = src.total_events
-                print('\t {:,.4f} sec'.format(dt))
-                print('\t {:,} recs'.format(n))
-                print('\t {:,.4f} recs/sec'.format(float(n)/dt))
+                # print('\t {:,.4f} sec'.format(dt))
+                # print('\t {:,} recs'.format(n))
+                # print('\t {:,.4f} recs/sec'.format(float(n)/dt))
 
         # convert perf dict to pandas dataframe
         daily_stats = self._create_daily_stats(perfs)
