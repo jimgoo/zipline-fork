@@ -66,7 +66,7 @@ class TradingEnvironment(object):
     def __init__(
         self,
         load=None,
-        bm_symbol='^GSPC',
+        bm_symbol='SPY',
         exchange_tz="US/Eastern",
         min_date=None,
         max_date=None,
