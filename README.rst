@@ -166,3 +166,4 @@ https://github.com/quantopian/zipline/wiki/Contribution-Requests
    :target: https://coveralls.io/r/quantopian/zipline
 .. |Code quality| image:: https://scrutinizer-ci.com/g/quantopian/zipline/badges/quality-score.png?b=master
    :target: https://scrutinizer-ci.com/g/quantopian/zipline/
+test
