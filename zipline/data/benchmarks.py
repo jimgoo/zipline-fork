@@ -16,6 +16,7 @@ import pandas as pd
 
 from six.moves.urllib_parse import urlencode
 import pandas_datareader.data as web
+from pulley.zp.data.loader import _load_raw_qm_data
 
 
 def format_yahoo_index_url(symbol, start_date, end_date):
@@ -61,6 +62,32 @@ def format_yahoo_index_url(symbol, start_date, end_date):
 #                        # instead of a 1-column DataFrame
 #     ).sort_index().tz_localize('UTC').pct_change(1).iloc[1:]
 
+# def get_benchmark_returns(symbol, start_date, end_date):
+#     """
+#     Get a Series of benchmark returns from Google finance.
+#     Returns a Series with returns from (start_date, end_date].
+#     start_date is **not** included because we need the close from day N - 1 to
+#     compute the returns for day N.
+#     """
+#     #print('----> Using Google to get benchmark returns, input symbol = %s, using SPY' % symbol)
+#     symbol = 'SPY'
+
+#     df = web.DataReader(symbol, 'google', start_date, end_date)
+#     df.index = df.index.tz_localize('UTC')
+
+#     # calendar = get_calendar("NYSE")
+#     # start_index = calendar.all_sessions.searchsorted(start_date)
+#     # end_index = calendar.all_sessions.searchsorted(end_date)
+
+#     # fill price data for missing dates
+#     # df = df["Close"].reindex(calendar.all_sessions[start_index:end_index],
+#     #                          method='ffill')
+#     df = df["Close"]
+
+#     #print(df.head())
+#     #print(df.tail())
+#     return df.pct_change(1).iloc[1:]
+    
 def get_benchmark_returns(symbol, start_date, end_date):
     """
     Get a Series of benchmark returns from Google finance.
@@ -68,11 +95,10 @@ def get_benchmark_returns(symbol, start_date, end_date):
     start_date is **not** included because we need the close from day N - 1 to
     compute the returns for day N.
     """
-    print('----> Using Google to get benchmark returns, input symbol = %s, using SPY' % symbol)
+
     symbol = 'SPY'
 
-    df = web.DataReader(symbol, 'google', start_date, end_date)
-    df.index = df.index.tz_localize('UTC')
+    df = _load_raw_qm_data(symbol, start_date, end_date)
 
     # calendar = get_calendar("NYSE")
     # start_index = calendar.all_sessions.searchsorted(start_date)
@@ -81,5 +107,9 @@ def get_benchmark_returns(symbol, start_date, end_date):
     # fill price data for missing dates
     # df = df["Close"].reindex(calendar.all_sessions[start_index:end_index],
     #                          method='ffill')
-    df = df["Close"]
+    df = df["price"]
+
+    #print(df.head())
+    #print(df.tail())
     return df.pct_change(1).iloc[1:]
+    

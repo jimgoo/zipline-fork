@@ -263,6 +263,7 @@ class AlgorithmSimulator(object):
                 perf_process_order(order)
 
         for trade in trades:
+            # print trades
             self.update_universe(trade)
             any_trade_occurred = True
             if instant_fill:

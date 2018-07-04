@@ -109,6 +109,7 @@ def check_order_triggers(order, event, take_market=False):
         # This is a SELL LIMIT order
         if event_price >= order.limit:
             limit_reached = True
+    # print (stop_reached, limit_reached, sl_stop_reached)
 
     return (stop_reached, limit_reached, sl_stop_reached)
 
@@ -118,6 +119,7 @@ def transact_stub(slippage, commission, event, open_orders):
     This is intended to be wrapped in a partial, so that the
     slippage and commission models can be enclosed.
     """
+
     for order, transaction in slippage(event, open_orders):
         if transaction and transaction.amount != 0:
             direction = math.copysign(1, transaction.amount)
@@ -338,6 +340,7 @@ class FixedSlippage(SlippageModel):
         self.take_market = take_market
  
     def process_order(self, event, order):
+
         if self.take_market:
             event_price = get_event_price(order, event)
         else:

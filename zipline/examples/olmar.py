@@ -3,7 +3,8 @@ from datetime import datetime
 import pytz
 
 from zipline.algorithm import TradingAlgorithm
-from zipline.utils.factory import load_from_yahoo
+#from zipline.utils.factory import load_from_yahoo
+from pulley.zp.data.loader import load_bars_from_yahoo
 from zipline.finance import commission
 
 #STOCKS = ['AMD', 'CERN', 'COST', 'DELL', 'GPS', 'INTC', 'MMM']
@@ -44,11 +45,11 @@ def handle_data(algo, data):
     x_tilde = np.zeros(m)
     b = np.zeros(m)
 
-    # find relative moving average price for each asset
+    # find relative moving average price for each assets
     for i, sid in enumerate(algo.sids):
         price = data[sid].price
         # Relative mean deviation
-        x_tilde[i] = data[sid].mavg(algo.window_length) / price
+        x_tilde[i] = data[sid].mavg(algo.window_length) / price # <NP> Transform/mavg broken
 
     ###########################
     # Inside of OLMAR (algo 2)
@@ -158,16 +159,15 @@ if __name__ == '__main__':
     start = datetime(2007, 1, 1, 0, 0, 0, 0, pytz.utc)
     end = datetime(2008, 1, 1, 0, 0, 0, 0, pytz.utc)
 
-    if False:
+    if True:
         # Load price data from yahoo.
-        data = load_from_yahoo(stocks=STOCKS, indexes={}, start=start, end=end)
+        data, bad_syms = load_bars_from_yahoo(stocks=STOCKS, indexes={}, start=start, end=end)
         data = data.dropna()
     else:
         from pulley.utils.data_io import load_pickle
         data = load_pickle('/media/ssd/quant-quote/df-minbar-11-etfs-20040102-20140506-close-only-prepro.pkl')
         data = data.loc[STOCKS, start:end, 'price']
         #data.items = np.arange(0, len(data.items)) # for sid's
-
     # Create and run the algorithm.
     olmar = TradingAlgorithm(handle_data=handle_data,
                              initialize=initialize,

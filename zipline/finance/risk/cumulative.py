@@ -226,6 +226,12 @@ class RiskMetricsCumulative(object):
                     0.0,
                     self.algorithm_cumulative_leverages)
 
+        # fix the case when the indices don't match
+        # if not self.algorithm_returns.index.equals(self.benchmark_returns.index):
+        #     joined = self.algorithm_returns.align(self.benchmark_returns, join='outer')
+        #     self.algorithm_returns = joined[0].fillna(method='ffill')
+        #     self.benchmark_returns = joined[1].fillna(method='ffill')
+
         if not len(self.algorithm_returns) and len(self.benchmark_returns):
             message = "Mismatch between benchmark_returns ({bm_count}) and \
 algorithm_returns ({algo_count}) in range {start} : {end} on {dt}"

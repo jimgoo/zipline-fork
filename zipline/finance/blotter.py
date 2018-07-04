@@ -195,12 +195,48 @@ class Blotter(object):
     def process_benchmark(self, benchmark_event):
         return
         yield
+        
+    # def process_trade(self, trade_event):
+    #     # newer trade processing found in fork
+    #     if trade_event.type != zp.DATASOURCE_TYPE.TRADE:
+    #         return
+
+    #     if trade_event.sid not in self.open_orders:
+    #         return
+
+    #     if trade_event.volume < 1:
+    #         # there are zero volume trade_events bc some stocks trade
+    #         # less frequently than once per minute.
+    #         return
+
+    #     orders = self.open_orders[trade_event.sid]
+    #     orders = sorted(orders, key=lambda o: o.dt)
+    #     # Only use orders for the current day or before
+    #     current_orders = filter(
+    #         lambda o: o.dt <= trade_event.dt,
+    #         orders)
+
+    #     for txn, order in self.process_transactions(trade_event,
+    #                                                 current_orders):
+    #         yield txn, order
+
+    #     # update the open orders for the trade_event's sid
+    #     updated_orders = \
+    #         [order for order
+    #             in self.open_orders[trade_event.sid]
+    #             if order.open]
+
+    #     if updated_orders:
+    #         self.open_orders[trade_event.sid] = updated_orders
+    #     else:
+    #         del self.open_orders[trade_event.sid]
 
     def process_trade(self, trade_event):
 
         if trade_event.sid not in self.open_orders:
             return
-
+        
+        # print trade_event.volume
         if trade_event.volume < 1:
             # there are zero volume trade_events bc some stocks trade
             # less frequently than once per minute.
@@ -231,6 +267,8 @@ class Blotter(object):
             del self.open_orders[trade_event.sid]
 
     def process_transactions(self, trade_event, current_orders):
+        # <NP > Never called via Olmar
+        # print trade_event, current_orders
         for order, txn in self.transact(trade_event, current_orders):
             if txn.type == zp.DATASOURCE_TYPE.COMMISSION:
                 order.commission = (order.commission or 0.0) + txn.cost

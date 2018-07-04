@@ -94,9 +94,9 @@ class TradingEnvironment(object):
         self.first_trading_day = self.trading_days[0]
         self.last_trading_day = self.trading_days[-1]
 
-        print('='*100)
-        print("first day: %s, last day: %s, n_days: %i\n" % (str(self.first_trading_day), str(self.last_trading_day), 
-                                                             len(self.trading_days)))
+        #print('='*100)
+        #print("first day: %s, last day: %s, n_days: %i\n" % (str(self.first_trading_day), str(self.last_trading_day), 
+        #                                                     len(self.trading_days)))
         # print(self.first_trading_day)
         # print(type(self.first_trading_day))
         # print(self.first_trading_day.tz)

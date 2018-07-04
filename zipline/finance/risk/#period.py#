@@ -107,7 +107,7 @@ class RiskMetricsPeriod(object):
                 bm_count=len(self.benchmark_returns),
                 algo_count=len(self.algorithm_returns),
                 start=self.start_date,
-                end=self.end_date
+                end=self.end_date,
             )
             # save for debugging
             import pickle
